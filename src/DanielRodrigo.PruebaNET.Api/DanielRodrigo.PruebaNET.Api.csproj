@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DanielRodrigo.PruebaNET.Application\DanielRodrigo.PruebaNET.Application.csproj" />
+    <ProjectReference Include="..\DanielRodrigo.PruebaNET.Infrastructure\DanielRodrigo.PruebaNET.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DanielRodrigo.PruebaNET.UnitTests" />
+  </ItemGroup>
+
+</Project>

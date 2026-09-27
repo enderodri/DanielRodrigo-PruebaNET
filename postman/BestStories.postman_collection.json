@@ -1,0 +1,328 @@
+{
+  "info": {
+    "_postman_id": "01fdae13-3f85-4d6c-8cf8-a77cd689bc48",
+    "name": "Best Stories API",
+    "description": "Requests and checks for the Hacker News best stories API. Select the local or docker environment before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Stories",
+      "item": [
+        {
+          "name": "Best 10 stories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best?n=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"],
+              "query": [{ "key": "n", "value": "10" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Body is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+                  "",
+                  "const stories = pm.response.json();",
+                  "",
+                  "pm.test(\"Returns 10 stories\", () => pm.expect(stories).to.have.lengthOf(10));",
+                  "",
+                  "pm.test(\"Stories are ordered by score, highest first\", () => {",
+                  "    for (let i = 1; i < stories.length; i++) {",
+                  "        pm.expect(stories[i - 1].score).to.be.at.least(stories[i].score);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Each story has exactly the fields from the brief\", () => {",
+                  "    stories.forEach(story => pm.expect(Object.keys(story)).to.eql([\"title\", \"uri\", \"postedBy\", \"time\", \"score\", \"commentCount\"]));",
+                  "});",
+                  "",
+                  "pm.test(\"Field types match the brief\", () => {",
+                  "    stories.forEach(story => {",
+                  "        pm.expect(story.title).to.be.a(\"string\").that.is.not.empty;",
+                  "        pm.expect(story.uri === null || typeof story.uri === \"string\").to.be.true;",
+                  "        pm.expect(story.postedBy).to.be.a(\"string\").that.is.not.empty;",
+                  "        pm.expect(story.time).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+00:00$/);",
+                  "        pm.expect(story.score).to.be.a(\"number\");",
+                  "        pm.expect(story.commentCount).to.be.a(\"number\");",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test(\"Response is cacheable until the next refresh\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Cache-Control\")).to.match(/^public, max-age=\\d+$/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Best story (n=1)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best?n=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"],
+              "query": [{ "key": "n", "value": "1" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns a single story\", () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Maximum allowed (n=500)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best?n=500",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"],
+              "query": [{ "key": "n", "value": "500" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const stories = pm.response.json();",
+                  "",
+                  "pm.test(\"Returns whatever Hacker News lists, at most 500\", () => {",
+                  "    pm.expect(stories.length).to.be.within(1, 500);",
+                  "});",
+                  "",
+                  "pm.test(\"Stories are ordered by score, highest first\", () => {",
+                  "    for (let i = 1; i < stories.length; i++) {",
+                  "        pm.expect(stories[i - 1].score).to.be.at.least(stories[i].score);",
+                  "    }",
+                  "});",
+                  "",
+                  "console.log(`${stories.length} stories listed; ${stories.filter(s => s.uri === null).length} without a link`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid n (0)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best?n=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"],
+              "query": [{ "key": "n", "value": "0" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error is a problem details document\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    const problem = pm.response.json();",
+                  "    pm.expect(problem.status).to.eql(400);",
+                  "    pm.expect(problem.title).to.eql(\"Invalid number of stories\");",
+                  "    pm.expect(problem.detail).to.include(\"between 1 and\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid n (501)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best?n=501",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"],
+              "query": [{ "key": "n", "value": "501" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Title explains the problem\", () => pm.expect(pm.response.json().title).to.eql(\"Invalid number of stories\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid n (not a number)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best?n=ten",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"],
+              "query": [{ "key": "n", "value": "ten" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Title explains the problem\", () => pm.expect(pm.response.json().title).to.eql(\"Invalid number of stories\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing n",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/stories/best",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "best"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Title explains the problem\", () => pm.expect(pm.response.json().title).to.eql(\"Invalid number of stories\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "live"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Reports Healthy\", () => pm.expect(pm.response.text()).to.eql(\"Healthy\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "ready"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 once a snapshot exists\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const report = pm.response.json();",
+                  "",
+                  "pm.test(\"Overall status is Healthy or Degraded\", () => pm.expect(report.status).to.be.oneOf([\"Healthy\", \"Degraded\"]));",
+                  "pm.test(\"Reports when the snapshot was taken\", () => {",
+                  "    const check = report.checks[\"best-stories\"];",
+                  "    pm.expect(check.data.refreshedAt).to.be.a(\"string\");",
+                  "    pm.expect(check.data.ageSeconds).to.be.a(\"number\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Documentation",
+      "item": [
+        {
+          "name": "OpenAPI document",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/openapi/v1.json",
+              "host": ["{{baseUrl}}"],
+              "path": ["openapi", "v1.json"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Documents the best stories endpoint\", () => {",
+                  "    pm.expect(pm.response.json().paths).to.have.property(\"/api/stories/best\");",
+                  "});",
+                  "",
+                  "pm.test(\"Describes n as a required integer\", () => {",
+                  "    const n = pm.response.json().paths[\"/api/stories/best\"].get.parameters.find(p => p.name === \"n\");",
+                  "    pm.expect(n.required).to.be.true;",
+                  "    pm.expect(n.schema.type).to.eql(\"integer\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5080" }
+  ]
+}

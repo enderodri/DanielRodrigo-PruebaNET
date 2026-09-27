@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore -c Release
+
+      - run: dotnet test --no-build -c Release --logger "trx" --results-directory TestResults
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-results
+          path: TestResults
+
+  docker-smoke:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: docker build -t pruebanet-api .
+
+      - run: docker run -d --name api -p 8080:8080 pruebanet-api
+
+      - name: Wait for the first snapshot
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The API did not become ready in time"
+          exit 1
+
+      - name: Request the best stories
+        run: |
+          curl -fsS -D headers.txt "http://localhost:8080/api/stories/best?n=3" -o response.json
+          cat headers.txt response.json
+          python3 - <<'EOF'
+          import json
+          stories = json.load(open("response.json"))
+          assert len(stories) == 3, stories
+          scores = [story["score"] for story in stories]
+          assert scores == sorted(scores, reverse=True), scores
+          assert list(stories[0]) == ["title", "uri", "postedBy", "time", "score", "commentCount"], stories[0]
+          EOF
+
+      - name: Container logs
+        if: always()
+        run: docker logs api
